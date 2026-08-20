@@ -24,8 +24,23 @@ export default function PostureApp() {
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [sideImage, setSideImage] = useState<string | null>(null);
 
-  const [frontMetrics, setFrontMetrics] = useState({ shoulder: 1.4, hip: 0.2, head: 0.4 });
-  const [sideMetrics, setSideMetrics] = useState({ cva: 55.2, headDistance: 13.7, torsoTilt: 7.8 });
+  // 정면 5대 항목 수치 및 상태
+  const [frontMetrics, setFrontMetrics] = useState({
+    headTilt: { value: 0.8, status: '양호' },
+    shoulderTilt: { value: 1.4, status: '양호' },
+    hipTilt: { value: 0.2, status: '양호' },
+    kneeAlignment: { value: 1.1, status: '양호 (정상 범위)' },
+    centerLine: { value: 0.5, status: '중앙 유지' },
+  });
+
+  // 측면 5대 항목 수치 및 상태
+  const [sideMetrics, setSideMetrics] = useState({
+    headTilt: { value: 12.4, status: '주의 (거북목 경향)' },
+    shoulderTilt: { value: 8.5, status: '주의 (라운드 숄더)' },
+    hipTilt: { value: 7.2, status: '양호' },
+    kneeAlignment: { value: 4.8, status: '주의 (반월상 변형)' },
+    centerLine: { value: 3.2, status: '전방 편위' },
+  });
 
   const webcamRef = useRef<Webcam>(null);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -137,11 +152,11 @@ export default function PostureApp() {
     const sDeg = Math.abs((Math.atan2(rShoulder.y - lShoulder.y, rShoulder.x - lShoulder.x) * 180) / Math.PI);
     const hDeg = Math.abs((Math.atan2(rHip.y - lHip.y, rHip.x - lHip.x) * 180) / Math.PI);
 
-    setFrontMetrics({
-      shoulder: Number(sDeg.toFixed(1)),
-      hip: Number(hDeg.toFixed(1)),
-      head: 0.4,
-    });
+    setFrontMetrics((prev) => ({
+      ...prev,
+      shoulderTilt: { value: Number(sDeg.toFixed(1)), status: sDeg > 3 ? '주의' : '양호' },
+      hipTilt: { value: Number(hDeg.toFixed(1)), status: hDeg > 3 ? '주의' : '양호' },
+    }));
   };
 
   const handleSideCapture = () => {
@@ -175,7 +190,7 @@ export default function PostureApp() {
   };
 
   const handleShare = async () => {
-    const textData = `[새힘병원 AI 자세분석 결과]\n${userName} 님\n\n- 어깨 기울기: ${frontMetrics.shoulder}°\n- 골반 기울기: ${frontMetrics.hip}°\n- 목 전방각(CVA): ${sideMetrics.cva}°`;
+    const textData = `[새힘병원 AI 자세분석 결과]\n${userName} 님\n\n- 어깨 기울기: 정면 ${frontMetrics.shoulderTilt.value}° / 측면 ${sideMetrics.shoulderTilt.value}°\n- 골반 기울기: 정면 ${frontMetrics.hipTilt.value}° / 측면 ${sideMetrics.hipTilt.value}°\n- 머리 기울기: 정면 ${frontMetrics.headTilt.value}° / 측면 ${sideMetrics.headTilt.value}°\n- 무릎 정렬: 정면 ${frontMetrics.kneeAlignment.status} / 측면 ${sideMetrics.kneeAlignment.status}\n- 신체 중심선: 정면 ${frontMetrics.centerLine.status} / 측면 ${sideMetrics.centerLine.status}`;
 
     if (navigator.share) {
       try {
@@ -192,7 +207,6 @@ export default function PostureApp() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#f5f7fa', minHeight: '100vh', padding: '16px' }}>
 
-      {/* 숨겨진 앨범/카메라 파일 입력 */}
       <input
         type="file"
         accept="image/*"
@@ -236,7 +250,7 @@ export default function PostureApp() {
               style={{ width: '100%', display: 'block' }}
             />
 
-            {/* 세밀해진 격자 무늬 + 연해진 중앙 빨간선 */}
+            {/* 세밀한 격자 및 연한 빨간선 */}
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none',
               backgroundImage: `
@@ -245,11 +259,9 @@ export default function PostureApp() {
               `,
               backgroundSize: '8% 8%',
             }}>
-              {/* 은은한 붉은 세로 중앙선 */}
               <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '1px', backgroundColor: 'rgba(239, 68, 68, 0.45)' }} />
             </div>
 
-            {/* 올바른 자세 유도 실시간 피드백 바 */}
             <div style={{
               position: 'absolute', bottom: '12px', left: '12px', right: '12px',
               backgroundColor: 'rgba(0, 0, 0, 0.65)', color: '#ffffff',
@@ -302,11 +314,14 @@ export default function PostureApp() {
             })}
           </div>
           <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 12px 0' }}>측정 수치</h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>어깨 기울기</span><strong>{frontMetrics.shoulder}° (양호)</strong></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>골반 기울기</span><strong>{frontMetrics.hip}° (양호)</strong></div>
+            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a' }}>정면 5대 핵심 측정 결과</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>머리 기울기</span><strong>{frontMetrics.headTilt.value}° ({frontMetrics.headTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>어깨 기울기</span><strong>{frontMetrics.shoulderTilt.value}° ({frontMetrics.shoulderTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>골반 기울기</span><strong>{frontMetrics.hipTilt.value}° ({frontMetrics.hipTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>무릎 정렬</span><strong>{frontMetrics.kneeAlignment.status}</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>신체 중심선</span><strong>{frontMetrics.centerLine.status}</strong></div>
           </div>
-          <button onClick={() => setStep(4)} style={{ width: '100%', padding: '14px', backgroundColor: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '16px', cursor: 'pointer' }}>결과지 생성 → 측면 촬영</button>
+          <button onClick={() => setStep(4)} style={{ width: '100%', padding: '14px', backgroundColor: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '16px', cursor: 'pointer' }}>측면 촬영으로 이동 →</button>
         </div>
       )}
 
@@ -366,9 +381,12 @@ export default function PostureApp() {
           <h3 style={{ color: '#1e3a8a', marginBottom: '12px' }}>측면 분석 — {userName}님</h3>
           {sideImage && <img src={sideImage} alt="Side" style={{ width: '100%', borderRadius: '16px' }} />}
           <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 12px 0' }}>측정 수치</h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span>목 전방각 (CVA)</span><strong style={{ color: '#dc2626' }}>{sideMetrics.cva}° (관리필요)</strong></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>머리 전방 이동</span><strong style={{ color: '#dc2626' }}>{sideMetrics.headDistance} cm (관리필요)</strong></div>
+            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a' }}>측면 5대 핵심 측정 결과</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>머리 기울기 (CVA)</span><strong style={{ color: '#dc2626' }}>{sideMetrics.headTilt.value}° ({sideMetrics.headTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>어깨 위치 (말린 어깨)</span><strong style={{ color: '#dc2626' }}>{sideMetrics.shoulderTilt.value}° ({sideMetrics.shoulderTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>골반 경사</span><strong>{sideMetrics.hipTilt.value}° ({sideMetrics.hipTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>무릎 굴곡/전만</span><strong style={{ color: '#dc2626' }}>{sideMetrics.kneeAlignment.status}</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>신체 중심선</span><strong style={{ color: '#dc2626' }}>{sideMetrics.centerLine.status}</strong></div>
           </div>
           <button onClick={() => setStep(6)} style={{ width: '100%', padding: '14px', backgroundColor: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '16px', cursor: 'pointer' }}>최종 결과지 보기 →</button>
         </div>
@@ -381,17 +399,26 @@ export default function PostureApp() {
           <div ref={reportRef} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
             <h2 style={{ color: '#1e3a8a', textAlign: 'center', marginBottom: '4px' }}>새힘병원</h2>
             <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px', margin: '0 0 16px 0' }}>AI 자세분석 결과지</p>
+            
             <div style={{ border: '1px solid #eee', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#2563eb' }}>① 정면 결과지 ({userName} 님)</h4>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}>어깨 기울기: <strong>{frontMetrics.shoulder}° (양호)</strong></p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}>골반 기울기: <strong>{frontMetrics.hip}° (양호)</strong></p>
+              <h4 style={{ margin: '0 0 8px 0', color: '#2563eb' }}>① 정면 평가 결과 ({userName} 님)</h4>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 머리 기울기: <strong>{frontMetrics.headTilt.value}° ({frontMetrics.headTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 어깨 기울기: <strong>{frontMetrics.shoulderTilt.value}° ({frontMetrics.shoulderTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 골반 기울기: <strong>{frontMetrics.hipTilt.value}° ({frontMetrics.hipTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 무릎 정렬: <strong>{frontMetrics.kneeAlignment.status}</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 신체 중심선: <strong>{frontMetrics.centerLine.status}</strong></p>
             </div>
+
             <div style={{ border: '1px solid #eee', padding: '12px', borderRadius: '8px' }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#2563eb' }}>② 측면 결과지 ({userName} 님)</h4>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}>목 전방각(CVA): <strong style={{ color: '#dc2626' }}>{sideMetrics.cva}° (관리필요)</strong></p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}>머리 전방 이동: <strong style={{ color: '#dc2626' }}>{sideMetrics.headDistance} cm (관리필요)</strong></p>
+              <h4 style={{ margin: '0 0 8px 0', color: '#2563eb' }}>② 측면 평가 결과 ({userName} 님)</h4>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 머리 기울기: <strong style={{ color: '#dc2626' }}>{sideMetrics.headTilt.value}° ({sideMetrics.headTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 어깨 위치: <strong style={{ color: '#dc2626' }}>{sideMetrics.shoulderTilt.value}° ({sideMetrics.shoulderTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 골반 경사: <strong>{sideMetrics.hipTilt.value}° ({sideMetrics.hipTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 무릎 굴곡: <strong style={{ color: '#dc2626' }}>{sideMetrics.kneeAlignment.status}</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 신체 중심선: <strong style={{ color: '#dc2626' }}>{sideMetrics.centerLine.status}</strong></p>
             </div>
           </div>
+
           <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <button onClick={handleShare} style={{ padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' }}>공유하기 (카카오톡 등)</button>
             <button onClick={handleDownloadReport} style={{ padding: '14px', backgroundColor: '#1e3a8a', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' }}>이미지 저장</button>
