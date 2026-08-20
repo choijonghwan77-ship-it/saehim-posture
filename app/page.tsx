@@ -24,7 +24,7 @@ export default function PostureApp() {
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [sideImage, setSideImage] = useState<string | null>(null);
 
-  // 정면 5대 항목 수치 및 상태
+  // 정면 5대 핵심 항목
   const [frontMetrics, setFrontMetrics] = useState({
     headTilt: { value: 0.8, status: '양호' },
     shoulderTilt: { value: 1.4, status: '양호' },
@@ -33,13 +33,13 @@ export default function PostureApp() {
     centerLine: { value: 0.5, status: '중앙 유지' },
   });
 
-  // 측면 5대 항목 수치 및 상태
+  // 측면 상세 5대 측정 수치
   const [sideMetrics, setSideMetrics] = useState({
-    headTilt: { value: 12.4, status: '주의 (거북목 경향)' },
-    shoulderTilt: { value: 8.5, status: '주의 (라운드 숄더)' },
-    hipTilt: { value: 7.2, status: '양호' },
-    kneeAlignment: { value: 4.8, status: '주의 (반월상 변형)' },
-    centerLine: { value: 3.2, status: '전방 편위' },
+    cva: { value: 48.5, unit: '°', status: '주의 (거북목 경향)' },         // 목 전방각
+    headShift: { value: 3.8, unit: 'cm', status: '주의 (전방 이동)' },     // 머리 전방이동
+    torsoTilt: { value: 2.1, unit: '°', status: '양호' },                // 상체 기울기
+    pelvicShift: { value: 1.5, unit: 'cm', status: '양호' },             // 골반 전방이동
+    kneeFlexion: { value: 4.2, unit: '°', status: '주의 (과지탱/굴곡)' }, // 무릎 굽힘
   });
 
   const webcamRef = useRef<Webcam>(null);
@@ -190,7 +190,7 @@ export default function PostureApp() {
   };
 
   const handleShare = async () => {
-    const textData = `[새힘병원 AI 자세분석 결과]\n${userName} 님\n\n- 어깨 기울기: 정면 ${frontMetrics.shoulderTilt.value}° / 측면 ${sideMetrics.shoulderTilt.value}°\n- 골반 기울기: 정면 ${frontMetrics.hipTilt.value}° / 측면 ${sideMetrics.hipTilt.value}°\n- 머리 기울기: 정면 ${frontMetrics.headTilt.value}° / 측면 ${sideMetrics.headTilt.value}°\n- 무릎 정렬: 정면 ${frontMetrics.kneeAlignment.status} / 측면 ${sideMetrics.kneeAlignment.status}\n- 신체 중심선: 정면 ${frontMetrics.centerLine.status} / 측면 ${sideMetrics.centerLine.status}`;
+    const textData = `[새힘병원 AI 자세분석 결과]\n${userName} 님\n\n[정면]\n- 어깨 기울기: ${frontMetrics.shoulderTilt.value}°\n- 골반 기울기: ${frontMetrics.hipTilt.value}°\n\n[측면]\n- 목 전방각(CVA): ${sideMetrics.cva.value}° (${sideMetrics.cva.status})\n- 머리 전방이동: ${sideMetrics.headShift.value}cm (${sideMetrics.headShift.status})\n- 상체 기울기: ${sideMetrics.torsoTilt.value}° (${sideMetrics.torsoTilt.status})\n- 골반 전방이동: ${sideMetrics.pelvicShift.value}cm (${sideMetrics.pelvicShift.status})\n- 무릎 굽힘: ${sideMetrics.kneeFlexion.value}° (${sideMetrics.kneeFlexion.status})`;
 
     if (navigator.share) {
       try {
@@ -250,7 +250,6 @@ export default function PostureApp() {
               style={{ width: '100%', display: 'block' }}
             />
 
-            {/* 세밀한 격자 및 연한 빨간선 */}
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none',
               backgroundImage: `
@@ -314,7 +313,7 @@ export default function PostureApp() {
             })}
           </div>
           <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a' }}>정면 5대 핵심 측정 결과</h4>
+            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a' }}>정면 측정 결과</h4>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>머리 기울기</span><strong>{frontMetrics.headTilt.value}° ({frontMetrics.headTilt.status})</strong></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>어깨 기울기</span><strong>{frontMetrics.shoulderTilt.value}° ({frontMetrics.shoulderTilt.status})</strong></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>골반 기울기</span><strong>{frontMetrics.hipTilt.value}° ({frontMetrics.hipTilt.status})</strong></div>
@@ -381,12 +380,12 @@ export default function PostureApp() {
           <h3 style={{ color: '#1e3a8a', marginBottom: '12px' }}>측면 분석 — {userName}님</h3>
           {sideImage && <img src={sideImage} alt="Side" style={{ width: '100%', borderRadius: '16px' }} />}
           <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a' }}>측면 5대 핵심 측정 결과</h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>머리 기울기 (CVA)</span><strong style={{ color: '#dc2626' }}>{sideMetrics.headTilt.value}° ({sideMetrics.headTilt.status})</strong></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>어깨 위치 (말린 어깨)</span><strong style={{ color: '#dc2626' }}>{sideMetrics.shoulderTilt.value}° ({sideMetrics.shoulderTilt.status})</strong></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>골반 경사</span><strong>{sideMetrics.hipTilt.value}° ({sideMetrics.hipTilt.status})</strong></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>무릎 굴곡/전만</span><strong style={{ color: '#dc2626' }}>{sideMetrics.kneeAlignment.status}</strong></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>신체 중심선</span><strong style={{ color: '#dc2626' }}>{sideMetrics.centerLine.status}</strong></div>
+            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a' }}>측면 상세 측정 결과</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>목 전방각 (CVA)</span><strong style={{ color: '#dc2626' }}>{sideMetrics.cva.value}{sideMetrics.cva.unit} ({sideMetrics.cva.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>머리 전방이동</span><strong style={{ color: '#dc2626' }}>{sideMetrics.headShift.value}{sideMetrics.headShift.unit} ({sideMetrics.headShift.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>상체 기울기</span><strong>{sideMetrics.torsoTilt.value}{sideMetrics.torsoTilt.unit} ({sideMetrics.torsoTilt.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}><span>골반 전방이동</span><strong>{sideMetrics.pelvicShift.value}{sideMetrics.pelvicShift.unit} ({sideMetrics.pelvicShift.status})</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}><span>무릎 굽힘</span><strong style={{ color: '#dc2626' }}>{sideMetrics.kneeFlexion.value}{sideMetrics.kneeFlexion.unit} ({sideMetrics.kneeFlexion.status})</strong></div>
           </div>
           <button onClick={() => setStep(6)} style={{ width: '100%', padding: '14px', backgroundColor: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '16px', cursor: 'pointer' }}>최종 결과지 보기 →</button>
         </div>
@@ -411,11 +410,11 @@ export default function PostureApp() {
 
             <div style={{ border: '1px solid #eee', padding: '12px', borderRadius: '8px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#2563eb' }}>② 측면 평가 결과 ({userName} 님)</h4>
-              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 머리 기울기: <strong style={{ color: '#dc2626' }}>{sideMetrics.headTilt.value}° ({sideMetrics.headTilt.status})</strong></p>
-              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 어깨 위치: <strong style={{ color: '#dc2626' }}>{sideMetrics.shoulderTilt.value}° ({sideMetrics.shoulderTilt.status})</strong></p>
-              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 골반 경사: <strong>{sideMetrics.hipTilt.value}° ({sideMetrics.hipTilt.status})</strong></p>
-              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 무릎 굴곡: <strong style={{ color: '#dc2626' }}>{sideMetrics.kneeAlignment.status}</strong></p>
-              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 신체 중심선: <strong style={{ color: '#dc2626' }}>{sideMetrics.centerLine.status}</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 목 전방각(CVA): <strong style={{ color: '#dc2626' }}>{sideMetrics.cva.value}{sideMetrics.cva.unit} ({sideMetrics.cva.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 머리 전방이동: <strong style={{ color: '#dc2626' }}>{sideMetrics.headShift.value}{sideMetrics.headShift.unit} ({sideMetrics.headShift.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 상체 기울기: <strong>{sideMetrics.torsoTilt.value}{sideMetrics.torsoTilt.unit} ({sideMetrics.torsoTilt.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 골반 전방이동: <strong>{sideMetrics.pelvicShift.value}{sideMetrics.pelvicShift.unit} ({sideMetrics.pelvicShift.status})</strong></p>
+              <p style={{ margin: '4px 0', fontSize: '13px' }}>· 무릎 굽힘: <strong style={{ color: '#dc2626' }}>{sideMetrics.kneeFlexion.value}{sideMetrics.kneeFlexion.unit} ({sideMetrics.kneeFlexion.status})</strong></p>
             </div>
           </div>
 
