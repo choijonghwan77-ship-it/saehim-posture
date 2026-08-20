@@ -29,23 +29,22 @@ export default function PostureApp() {
 
   const webcamRef = useRef<Webcam>(null);
   const reportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [tiltWarning, setTiltWarning] = useState<string>('');
   const [keypoints, setKeypoints] = useState<Keypoint[]>([]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
 
-  // 스마트폰 후면 카메라 강제 지정 옵션 (모바일 최적화)
   const videoConstraints = {
     facingMode: { ideal: 'environment' },
     width: { ideal: 1280 },
     height: { ideal: 720 },
   };
 
-  // 수평 센서 감지
   useEffect(() => {
     const handleOrientation = (event: DeviceOrientationEvent) => {
       const gamma = event.gamma || 0;
       if (Math.abs(gamma) > 3) {
-        setTiltWarning(`수평이 안 맞아요 — ${gamma > 0 ? '오른쪽' : '왼쪽'}으로 기울었어요.`);
+        setTiltWarning(`수평이 안 맞아요 — ${gamma > 0 ? '오른쪽' : '왼쪽'}으로 기울었어요. 거치대를 조정해주세요.`);
       } else {
         setTiltWarning('');
       }
@@ -59,7 +58,6 @@ export default function PostureApp() {
     };
   }, [step]);
 
-  // CDN 로더
   const loadScript = (src: string) => {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) {
@@ -74,12 +72,7 @@ export default function PostureApp() {
     });
   };
 
-  // 정면 AI 포즈 감지
-  const handleFrontCapture = async () => {
-    if (!webcamRef.current) return;
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) return;
-
+  const processFrontImage = async (imageSrc: string) => {
     setFrontImage(imageSrc);
     setStep(3);
 
@@ -110,6 +103,28 @@ export default function PostureApp() {
       }
     } catch (err) {
       console.error('AI 모델 로드 실패:', err);
+    }
+  };
+
+  const handleFrontCapture = () => {
+    if (!webcamRef.current) return;
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (imageSrc) processFrontImage(imageSrc);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (step === 2) processFrontImage(result);
+        if (step === 4) {
+          setSideImage(result);
+          setStep(5);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -177,7 +192,16 @@ export default function PostureApp() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#f5f7fa', minHeight: '100vh', padding: '16px' }}>
 
-      {/* STEP 1: 깔끔한 초기 메인 화면 복원 */}
+      {/* 숨겨진 앨범/카메라 파일 입력 */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
+      />
+
+      {/* STEP 1: 메인 화면 */}
       {step === 1 && (
         <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px' }}>
           <h2 style={{ color: '#1e3a8a', marginBottom: '20px' }}>자세 측정 시작하기</h2>
@@ -197,14 +221,13 @@ export default function PostureApp() {
         </div>
       )}
 
-      {/* STEP 2: 정면 촬영 (후면 카메라 + 격자 가이드) */}
+      {/* STEP 2: 정면 촬영 */}
       {step === 2 && (
         <div>
-          <button onClick={() => setStep(1)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px' }}>← 처음으로</button>
+          <button onClick={() => setStep(1)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px', fontWeight: 'bold' }}>← 처음으로</button>
           <h3 style={{ color: '#1e3a8a', marginBottom: '16px' }}>정면 촬영 — {userName}님</h3>
           <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '2px solid #ddd', backgroundColor: '#000' }}>
             
-            {/* 후면 카메라 적용 */}
             <Webcam
               ref={webcamRef}
               screenshotFormat="image/jpeg"
@@ -213,29 +236,55 @@ export default function PostureApp() {
               style={{ width: '100%', display: 'block' }}
             />
 
-            {/* 격자 무늬 가이드 */}
+            {/* 세밀해진 격자 무늬 + 연해진 중앙 빨간선 */}
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none',
               backgroundImage: `
-                linear-gradient(to right, rgba(255, 255, 255, 0.35) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.35) 1px, transparent 1px)
+                linear-gradient(to right, rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 1px, transparent 1px)
               `,
-              backgroundSize: '20% 20%',
+              backgroundSize: '8% 8%',
             }}>
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '2px', backgroundColor: '#ef4444' }} />
-              <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '2px', backgroundColor: '#ef4444' }} />
+              {/* 은은한 붉은 세로 중앙선 */}
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '1px', backgroundColor: 'rgba(239, 68, 68, 0.45)' }} />
+            </div>
+
+            {/* 올바른 자세 유도 실시간 피드백 바 */}
+            <div style={{
+              position: 'absolute', bottom: '12px', left: '12px', right: '12px',
+              backgroundColor: 'rgba(0, 0, 0, 0.65)', color: '#ffffff',
+              padding: '10px 14px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', backdropFilter: 'blur(4px)'
+            }}>
+              정면을 보고 머리부터 발끝까지 화면에 들어오도록 서주세요
             </div>
 
           </div>
-          {tiltWarning && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '12px', borderRadius: '8px', marginTop: '12px', textAlign: 'center', fontSize: '14px' }}>{tiltWarning}</div>}
-          <button onClick={handleFrontCapture} style={{ width: '100%', padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '16px', cursor: 'pointer' }}>즉시 촬영</button>
+
+          {tiltWarning && (
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '12px', borderRadius: '8px', marginTop: '12px', textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
+              {tiltWarning}
+            </div>
+          )}
+
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button onClick={handleFrontCapture} style={{ width: '100%', padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
+              즉시 촬영
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} style={{ width: '100%', padding: '12px', backgroundColor: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>
+              사진첩에서 불러오기
+            </button>
+          </div>
+
+          <p style={{ fontSize: '12px', color: '#64748b', marginTop: '12px', lineHeight: '1.4' }}>
+            빨간 세로선은 구도 참고용일 뿐, 정확히 맞추지 않아도 됩니다. 발끝부터 머리끝까지 모두 화면에 들어오게만 해주세요.
+          </p>
         </div>
       )}
 
       {/* STEP 3: 정면 분석 */}
       {step === 3 && (
         <div>
-          <button onClick={() => setStep(2)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px' }}>← 다시 촬영</button>
+          <button onClick={() => setStep(2)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px', fontWeight: 'bold' }}>← 다시 촬영</button>
           <h3 style={{ color: '#1e3a8a', marginBottom: '12px' }}>정면 분석 — {userName}님</h3>
           <div onMouseMove={handleMouseMove} onMouseUp={() => setDraggingIdx(null)} style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', userSelect: 'none' }}>
             {frontImage && <img src={frontImage} alt="Front" style={{ width: '100%', display: 'block' }} />}
@@ -261,10 +310,10 @@ export default function PostureApp() {
         </div>
       )}
 
-      {/* STEP 4: 측면 촬영 (후면 카메라) */}
+      {/* STEP 4: 측면 촬영 */}
       {step === 4 && (
         <div>
-          <button onClick={() => setStep(3)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px' }}>← 이전으로</button>
+          <button onClick={() => setStep(3)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px', fontWeight: 'bold' }}>← 이전으로</button>
           <h3 style={{ color: '#1e3a8a', marginBottom: '16px' }}>측면 촬영 — {userName}님</h3>
           <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '2px solid #ddd', backgroundColor: '#000' }}>
             <Webcam
@@ -277,16 +326,37 @@ export default function PostureApp() {
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none',
               backgroundImage: `
-                linear-gradient(to right, rgba(255, 255, 255, 0.35) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.35) 1px, transparent 1px)
+                linear-gradient(to right, rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 1px, transparent 1px)
               `,
-              backgroundSize: '20% 20%',
+              backgroundSize: '8% 8%',
             }}>
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '2px', backgroundColor: '#ef4444' }} />
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '1px', backgroundColor: 'rgba(239, 68, 68, 0.45)' }} />
+            </div>
+
+            <div style={{
+              position: 'absolute', bottom: '12px', left: '12px', right: '12px',
+              backgroundColor: 'rgba(0, 0, 0, 0.65)', color: '#ffffff',
+              padding: '10px 14px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', backdropFilter: 'blur(4px)'
+            }}>
+              측면을 바라보고 귓볼과 어깨선이 보이도록 차렷 자세로 서주세요
             </div>
           </div>
-          {tiltWarning && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '12px', borderRadius: '8px', marginTop: '12px', textAlign: 'center', fontSize: '14px' }}>{tiltWarning}</div>}
-          <button onClick={handleSideCapture} style={{ width: '100%', padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', marginTop: '16px', cursor: 'pointer' }}>즉시 촬영</button>
+
+          {tiltWarning && (
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '12px', borderRadius: '8px', marginTop: '12px', textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
+              {tiltWarning}
+            </div>
+          )}
+
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button onClick={handleSideCapture} style={{ width: '100%', padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>
+              즉시 촬영
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} style={{ width: '100%', padding: '12px', backgroundColor: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>
+              사진첩에서 불러오기
+            </button>
+          </div>
         </div>
       )}
 
@@ -307,7 +377,7 @@ export default function PostureApp() {
       {/* STEP 6: 최종 결과지 */}
       {step === 6 && (
         <div>
-          <button onClick={() => setStep(1)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px' }}>← 처음으로 (새 참가자)</button>
+          <button onClick={() => setStep(1)} style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', marginBottom: '12px', fontWeight: 'bold' }}>← 처음으로 (새 참가자)</button>
           <div ref={reportRef} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
             <h2 style={{ color: '#1e3a8a', textAlign: 'center', marginBottom: '4px' }}>새힘병원</h2>
             <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px', margin: '0 0 16px 0' }}>AI 자세분석 결과지</p>
